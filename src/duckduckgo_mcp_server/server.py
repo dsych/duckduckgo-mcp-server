@@ -9,7 +9,6 @@ import traceback
 import asyncio
 import argparse
 from datetime import datetime, timedelta
-import time
 import re
 import os
 from enum import Enum
@@ -287,16 +286,21 @@ async def search(query: str, ctx: Context, max_results: int = 10, region: str = 
 
 
 @mcp.tool()
-async def fetch_content(url: str, ctx: Context, start_index: int = 0, max_length: int = 8000) -> str:
-    """Fetch and extract the main text content from a webpage. Strips out navigation, headers, footers, scripts, and styles to return clean readable text. Use this after searching to read the full content of a specific result. Supports pagination for long pages via start_index and max_length.
+async def fetch_content(urls: list[str], ctx: Context, pagination_token_for_url: list[int], max_length: int = 8000) -> list[str]:
+    """Fetch and extract the main text content from webpages. Strips out navigation, headers, footers, scripts, and styles to return clean readable text. Use this after searching to read the full content of a specific result. Supports pagination for long pages via start_index and max_length.
 
     Args:
-        url: The full URL of the webpage to fetch (must start with http:// or https://).
-        start_index: Character offset to start reading from (default: 0). Use this to paginate through long content.
+        urls: List of full URLs of the webpage to fetch (must start with http:// or https://).
+        pagination_token_for_url: Character offsets per url to start reading from (default: 0 per url). Use this to paginate through long content. Number of elements in this list should align with the number of urls.
         max_length: Maximum number of characters to return (default: 8000). Increase for more content per request or decrease for quicker responses.
         ctx: MCP context for logging.
     """
-    return await fetcher.fetch_and_parse(url, ctx, start_index, max_length)
+    pagination_token_for_url.extend([0] * (len(urls) - len(pagination_token_for_url)))
+    awaitable_results = []
+    for url, start_index in zip(urls, pagination_token_for_url):
+        awaitable_results.append(fetcher.fetch_and_parse(url, ctx, start_index, max_length))
+
+    return awaitable_results
 
 
 def main():
